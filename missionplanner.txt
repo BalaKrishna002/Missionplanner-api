@@ -1,0 +1,107 @@
+
+// IN CurrentState.cs file
+
+public void UpdateCurrentSettings(Action<CurrentState> bs)
+{
+    var jsonData = JsonConvert.SerializeObject(bs);
+    api(jsonData);
+
+
+    UpdateCurrentSettings(bs, false, parent.parent, parent.parent.MAV);
+}
+
+static async Task api(string jsonData)
+{
+    // Create a HttpClient instance
+    using (var httpClient = new HttpClient())
+    {
+        // Prepare the HTTP request content with JSON data
+        var content = new StringContent(jsonData, Encoding.UTF8, "application/json");
+        var apiUrl = "http://localhost:4000/tdata";
+
+        try
+        {
+            // Send the POST request
+            var response = await httpClient.PostAsync(apiUrl, content);
+
+            // Check if the request was successful
+            if (response.IsSuccessStatusCode)
+            {
+                // Read and display the response
+                var responseContent = await response.Content.ReadAsStringAsync();
+                Console.WriteLine("Response: " + responseContent);
+            }
+            else
+            {
+                Console.WriteLine("Failed to make request. Status code: " + response.StatusCode);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Error: " + ex.Message);
+        }
+    }
+}
+
+
+// IN FlightData.cs file
+
+private void Messagetabtimer_Tick(object sender, EventArgs e)
+{
+    var messagetime = MainV2.comPort.MAV.cs.messages.LastOrDefault().time;
+    if (messagecount != messagetime.toUnixTime())
+    {
+        try
+        {
+            StringBuilder message = new StringBuilder();
+            MainV2.comPort.MAV.cs.messages.ForEach(x =>
+            {
+                message.Insert(0, x.Item1 + " : " + x.Item2 + "\r\n");
+            });
+            txt_messagebox.Text = message.ToString();
+
+            messages_api(message.ToJSON());
+
+            messagecount = messagetime.toUnixTime();
+        }
+        catch (Exception ex)
+        {
+            log.Error(ex);
+        }
+    }
+
+    coords1.AltUnit = CurrentState.AltUnit;
+}
+
+static async Task messages_api(string messages)
+{
+    // Create a HttpClient instance
+    using (var httpClient = new HttpClient())
+    {
+        // Prepare the HTTP request content with JSON data
+        var content = new StringContent(messages, Encoding.UTF8, "application/json");
+        var apiUrl = "http://localhost:4000/messages";
+
+        try
+        {
+            // Send the POST request
+            var response = await httpClient.PostAsync(apiUrl, content);
+
+            // Check if the request was successful
+            if (response.IsSuccessStatusCode)
+            {
+                // Read and display the response
+                var responseContent = await response.Content.ReadAsStringAsync();
+                Console.WriteLine("Response: " + responseContent);
+            }
+            else
+            {
+                Console.WriteLine("Failed to make request. Status code: " + response.StatusCode);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Error: " + ex.Message);
+        }
+    }
+}

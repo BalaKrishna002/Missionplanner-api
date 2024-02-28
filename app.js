@@ -7,21 +7,40 @@ const port = 4000;
 app.use(express.json())
 app.use(cors());
 
-let data = null;
+let tdata = null;
+let messages = null;
 
-app.post("/data",(req,res)=>{
-    data = req.body;
+// // GET & POST api endpoint's for actual telemetry data
+app.post("/tdata",(req,res)=>{
+    tdata = req.body;
     //console.log(util.inspect(req.body.Target.input.groundspeed, { depth: null }));
     //console.log(req.body.Target.input.alt);
 })
 
-app.get('/', (req, res) => {
-    if (data) {
-      res.status(200).json(data);
-    } else {
-      res.status(404).json({ error: 'No data available' });
-    }
-  });
+app.get('/tdata-data', (req, res) => {
+  if (tdata) {
+    res.status(200).json(tdata);
+  } else {
+    res.status(404).json({ error: 'No data available' });
+  }
+});
+
+
+// GET & POST api endpoint's for messages
+app.post("/messages",(req,res)=>{
+  messages = req.body;
+  console.log(req.body);
+})
+
+app.get("/message-data",(req,res)=>{
+  if (messages) {
+    res.status(200).json(messages);
+  } else {
+    res.status(404).json({ error: 'No data available' });
+  }
+})
+
+
 
 
 app.listen(port,()=>{

@@ -11,26 +11,47 @@
     <p>Pitch: <b><span id="pitch">0</span></b></p>
     <p>Yaw: <b><span id="yaw">0</span></b></p>
 
+    <div>
+        <h1>Messages:</h1>
+        <p id="messages">Mission not started</p>
+    </div>
+
     <script>
-        function fetchData() {
-            fetch('http://localhost:4000/')
+        function fetchTData() {
+            fetch('http://localhost:4000/tdata-data')
             .then(response => response.json())
             .then(data => {
                 // Update frontend with received data
-                console.log(data);
+                //console.log(data);
                 document.getElementById("alt").innerText = data.Target.input.alt;
                 document.getElementById("roll").innerText = data.Target.input.roll;
                 document.getElementById("pitch").innerText = data.Target.input.pitch;
                 document.getElementById("yaw").innerText = data.Target.input.yaw;
                 // Call fetchData again after receiving data
-                setTimeout(fetchData, 1000); // Poll every second
+                setTimeout(fetchTData, 1000); // Poll every second
             })
             .catch(error => {
-                console.error('Error fetching data:', error);
+                console.error('Error fetching telemetry data:', error);
+            });
+        }
+
+        function fetchMessages() {
+            fetch('http://localhost:4000/message-data')
+            .then(response => response.json())
+            .then(data => {
+                // Update frontend with received data
+                console.log(`Messages: `,data);
+                document.getElementById("messages").innerHTML = data.m_StringValue.replace(/\n/g, '<br>');
+                // Call fetchData again after receiving data
+                setTimeout(fetchMessages, 1000); // Poll every second
+            })
+            .catch(error => {
+                console.error('Error fetching messages data:', error);
             });
         }
         
-        fetchData(); // Start fetching data
+        fetchTData(); // Start fetching tdata
+        fetchMessages(); // Start fetching Messages data
         
     </script>
 </body>
