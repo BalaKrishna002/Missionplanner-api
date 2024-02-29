@@ -29,10 +29,10 @@ app.get('/tdata-data', (req, res) => {
 // GET & POST api endpoint's for messages
 app.post("/messages",(req,res)=>{
   messages = req.body;
-  console.log(req.body);
+  //console.log(req.body);
 })
 
-app.get("/message-data",(req,res)=>{
+app.get("/messages-data",(req,res)=>{
   if (messages) {
     res.status(200).json(messages);
   } else {

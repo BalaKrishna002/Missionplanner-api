@@ -1,16 +1,16 @@
 
-// IN CurrentState.cs file
+// IN CurrentState.cs file replace UpdateCurrentSettings(Action<CurrentState> bs) function with below two functions
 
 public void UpdateCurrentSettings(Action<CurrentState> bs)
 {
     var jsonData = JsonConvert.SerializeObject(bs);
-    api(jsonData);
+    Tdata_api(jsonData);
 
 
     UpdateCurrentSettings(bs, false, parent.parent, parent.parent.MAV);
 }
 
-static async Task api(string jsonData)
+static async Task Tdata_api(string jsonData)
 {
     // Create a HttpClient instance
     using (var httpClient = new HttpClient())
@@ -44,7 +44,7 @@ static async Task api(string jsonData)
 }
 
 
-// IN FlightData.cs file
+// IN FlightData.cs file replace Messagetabtimer_Tick(object sender, EventArgs e) function with below two functions
 
 private void Messagetabtimer_Tick(object sender, EventArgs e)
 {
@@ -60,7 +60,7 @@ private void Messagetabtimer_Tick(object sender, EventArgs e)
             });
             txt_messagebox.Text = message.ToString();
 
-            messages_api(message.ToJSON());
+            Messages_api(message.ToJSON());
 
             messagecount = messagetime.toUnixTime();
         }
@@ -73,7 +73,7 @@ private void Messagetabtimer_Tick(object sender, EventArgs e)
     coords1.AltUnit = CurrentState.AltUnit;
 }
 
-static async Task messages_api(string messages)
+static async Task Messages_api(string messages)
 {
     // Create a HttpClient instance
     using (var httpClient = new HttpClient())
