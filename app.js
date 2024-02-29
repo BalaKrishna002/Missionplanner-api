@@ -1,48 +1,53 @@
-const express = require("express");
-const cors = require('cors');
-const util = require('util');
+// server.js
+
+const express = require('express');
+const net = require('net');
+const cors = require("cors");
+
 const app = express();
-const port = 4000;
 
-app.use(express.json())
+// Middleware to parse JSON data from requests
+app.use(express.json());
 app.use(cors());
-
 let tdata = null;
-let messages = null;
 
-// // GET & POST api endpoint's for actual telemetry data
-app.post("/tdata",(req,res)=>{
-    tdata = req.body;
-    //console.log(util.inspect(req.body.Target.input.groundspeed, { depth: null }));
-    //console.log(req.body.Target.input.alt);
-})
+// Create a TCP server using the net module
+const tcpServer = net.createServer((socket) => {
+    console.log('TCP client connected.');
 
-app.get('/tdata-data', (req, res) => {
-  if (tdata) {
+    // Event listener for data received from TCP client
+    socket.on('data', (data) => {
+        const jsonData = data.toString('utf8');
+
+        try {
+        // Parse the JSON string to a JavaScript object
+        const parsedData = JSON.parse(jsonData);
+        tdata=parsedData;
+
+        // Handle the parsed JSON data
+        console.log(parsedData);
+        } catch (error) {
+        console.error('Error parsing JSON:', error);
+        }
+    });
+});
+
+// Start the Express server
+const HTTP_PORT = 3000;
+app.listen(HTTP_PORT, () => {
+    console.log(`Express server is running on port ${HTTP_PORT}`);
+});
+
+// Start the TCP server
+const TCP_PORT = 4000;
+tcpServer.listen(TCP_PORT, () => {
+    console.log(`TCP server is running on port ${TCP_PORT}`);
+});
+
+// Express route to handle incoming HTTP requests
+app.get('/data', (req, res) => {
+    console.log('Received JSON data from HTTP request:', tdata);
     res.status(200).json(tdata);
-  } else {
-    res.status(404).json({ error: 'No data available' });
-  }
 });
 
 
-// GET & POST api endpoint's for messages
-app.post("/messages",(req,res)=>{
-  messages = req.body;
-  //console.log(req.body);
-})
-
-app.get("/messages-data",(req,res)=>{
-  if (messages) {
-    res.status(200).json(messages);
-  } else {
-    res.status(404).json({ error: 'No data available' });
-  }
-})
-
-
-
-
-app.listen(port,()=>{
-    console.log(`running on port:${port}`);
-})
