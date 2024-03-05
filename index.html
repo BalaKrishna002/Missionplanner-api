@@ -48,7 +48,7 @@
 
     <script>
         function fetchTData() {
-            fetch('http://localhost:4000/tdata-data')
+            fetch('https://missionplanner-api.onrender.com/tdata-data')
             .then(response => response.json())
             .then(data => {
                 // Update frontend with received data
@@ -61,7 +61,7 @@
                 document.getElementById("dtwp").innerText = data.Target.input.wp_dist;
                 document.getElementById("vspd").innerText = data.Target.input.verticalspeed;
                 // Call fetchData again after receiving data
-                setTimeout(fetchTData, 1000); // Poll every second
+                setTimeout(fetchTData, 10); // Poll every second
             })
             .catch(error => {
                 console.error('Error fetching telemetry data:', error);
@@ -69,14 +69,14 @@
         }
 
         function fetchMessages() {
-            fetch('http://localhost:4000/messages-data')
+            fetch('https://missionplanner-api.onrender.com/messages-data')
             .then(response => response.json())
             .then(data => {
                 // Update frontend with received data
                 console.log(`Messages: `,data);
                 document.getElementById("messages").innerHTML = data.m_StringValue.replace(/\n/g, '<br>');
                 // Call fetchData again after receiving data
-                setTimeout(fetchMessages, 1000); // Poll every second
+                setTimeout(fetchMessages, 500); // Poll every second
             })
             .catch(error => {
                 console.error('Error fetching messages data:', error);

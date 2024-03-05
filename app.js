@@ -19,7 +19,11 @@ app.post("/tdata", (req, res) => {
 // GET endpoint for telemetry data
 app.get('/tdata-data', (req, res) => {
     if (tdata) {
-        res.status(200).json(tdata);
+        if(tdata.Target.input.prearmstatus) res.status(200).json(tdata);
+        else {
+            console.log("Mission Disarmed/Not yet Started!");
+            res.status(200).json({"message":"Mission Disarmed/Not yet Started!"});
+        }
     } else {
         res.status(404).json({ error: 'No data available' });
     }
