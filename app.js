@@ -43,7 +43,7 @@ app.post("/messages", (req, res) => {
 // GET endpoint for messages
 app.get("/messages-data", (req, res) => {
     if (messages) {
-        if(tdata?.Target?.input?.armed) res.status(200).json(messages);
+        if(tdata?.Target?.input?.prearmstatus) res.status(200).json(messages);
         else {
             //console.log("Mission Disarmed/Not yet Started!");
             setTimeout(() => {
