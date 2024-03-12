@@ -7,8 +7,8 @@ const port = process.env.PORT || 4000;
 app.use(express.json());
 app.use(cors());
 
-let tdata = "Mission Disarmed/Not yet Started!";
-let messages = "Mission Disarmed/Not yet Started!";
+let tdata = null;
+let messages = null;
 let waypoints = null;
 
 // POST endpoint for telemetry data
@@ -20,11 +20,11 @@ app.post("/tdata", (req, res) => {
 // GET endpoint for telemetry data
 app.get('/tdata-data', (req, res) => {
     if (tdata) {
-        if(tdata.Target.input.prearmstatus) res.status(200).json(tdata);
+        if(tdata?.Target?.input?.prearmstatus) res.status(200).json(tdata);
         else {
             //console.log("Mission Disarmed/Not yet Started!");
             setTimeout(() => {
-                tdata.m_StringValue = "Mission Disarmed/Not yet Started!";
+                tdata = "Mission Disarmed/Not yet Started!";
                 //console.log(myVariable); // This will be executed after 3 seconds
             }, 1000*60*60);
             res.status(200).json({"message":tdata});
@@ -43,11 +43,11 @@ app.post("/messages", (req, res) => {
 // GET endpoint for messages
 app.get("/messages-data", (req, res) => {
     if (messages) {
-        if(tdata.Target.input.prearmstatus) res.status(200).json(messages);
+        if(tdata?.Target?.input?.armed) res.status(200).json(messages);
         else {
             //console.log("Mission Disarmed/Not yet Started!");
             setTimeout(() => {
-                messages.m_StringValue = "Mission Disarmed/Not yet Started!";
+                messages = "Mission Disarmed/Not yet Started!";
                 //console.log(myVariable); // This will be executed after 3 seconds
             }, 1000*60*60);
             res.status(200).json({"message":messages});
