@@ -49,11 +49,12 @@
     <script>
         function fetchTData() {
             fetch('https://missionplanner-api.onrender.com/tdata-data')
+            //fetch('http://localhost:4000/tdata-data')
             .then(response => response.json())
             .then(data => {
                 // Update frontend with received data
                 //console.log(data);
-                document.getElementById("alt").innerText = data.Target.input.alt;
+                document.getElementById("alt").innerText = data.Target.input.alt.toFixed(2);
                 document.getElementById("roll").innerText = data.Target.input.roll;
                 document.getElementById("pitch").innerText = data.Target.input.pitch;
                 document.getElementById("yaw").innerText = data.Target.input.yaw;
@@ -61,7 +62,7 @@
                 document.getElementById("dtwp").innerText = data.Target.input.wp_dist;
                 document.getElementById("vspd").innerText = data.Target.input.verticalspeed;
                 // Call fetchData again after receiving data
-                setTimeout(fetchTData, 10); // Poll every second
+                setTimeout(fetchTData, 0); // Poll every second
             })
             .catch(error => {
                 console.error('Error fetching telemetry data:', error);
@@ -70,13 +71,14 @@
 
         function fetchMessages() {
             fetch('https://missionplanner-api.onrender.com/messages-data')
+            //fetch('http://localhost:4000/messages-data')
             .then(response => response.json())
             .then(data => {
                 // Update frontend with received data
-                console.log(`Messages: `,data);
-                document.getElementById("messages").innerHTML = data.m_StringValue.replace(/\n/g, '<br>');
+                console.log(data.m_StringValue.split('\n').slice(0,5).join('\n'));
+                document.getElementById("messages").innerHTML = data.m_StringValue.split('\n').slice(0,5).join('\n').replace(/\n/g, '<br>');
                 // Call fetchData again after receiving data
-                setTimeout(fetchMessages, 500); // Poll every second
+                setTimeout(fetchMessages, 10); // Poll every second
             })
             .catch(error => {
                 console.error('Error fetching messages data:', error);
