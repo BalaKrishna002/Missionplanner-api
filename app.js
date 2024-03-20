@@ -20,17 +20,10 @@ app.post("/tdata", (req, res) => {
 // GET endpoint for telemetry data
 app.get('/tdata-data', (req, res) => {
     if (tdata) {
-        if(tdata?.Target?.input?.prearmstatus) res.status(200).json(tdata);
-        else {
-            //console.log("Mission Disarmed/Not yet Started!");
-            setTimeout(() => {
-                tdata = "Mission Disarmed/Not yet Started!";
-                //console.log(myVariable); // This will be executed after 3 seconds
-            }, 1000*60*60);
-            res.status(200).json({"message":tdata});
-        }
+        return res.status(200).json(tdata);
+        
     } else {
-        res.status(404).json({ error: 'No data available' });
+        return res.status(404).json({ error: 'No data available' });
     }
 });
 
@@ -43,18 +36,11 @@ app.post("/messages", (req, res) => {
 // GET endpoint for messages
 app.get("/messages-data", (req, res) => {
     if (messages) {
-        if(tdata?.Target?.input?.prearmstatus) res.status(200).json(messages);
-        else {
-            //console.log("Mission Disarmed/Not yet Started!");
-            setTimeout(() => {
-                messages = "Mission Disarmed/Not yet Started!";
-                //console.log(myVariable); // This will be executed after 3 seconds
-            }, 1000*60*60);
-            res.status(200).json({"message":messages});
-        }
+        return res.status(200).json(messages);
+        
         
     } else {
-        res.status(404).json({ error: 'No data available' });
+        return res.status(404).json({ error: 'No data available' });
     }
 });
 
