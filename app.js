@@ -9,6 +9,7 @@ app.use(cors());
 
 let tdata = null;
 let messages = null;
+let preflight = null;
 let waypoints = null;
 
 // POST endpoint for telemetry data
@@ -43,6 +44,21 @@ app.get("/messages-data", (req, res) => {
         return res.status(404).json({ error: 'No data available' });
     }
 });
+
+// GET endpoint for preflight messages
+app.get("/preflight-data",(req,res) =>{
+    if(preflight){
+        return res.status(200).json(preflight);
+    }else {
+        return res.status(404).json({ error: 'No data available' });
+    }
+})
+
+// POST endpoint of preflight messages
+app.post("/preflight",(req,res)=>{
+    preflight = req.body;
+    res.status(200).json({"message":"Data Recieved"});
+})
 
 
 // POST Request for waypoints
