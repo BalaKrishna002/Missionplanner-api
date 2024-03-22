@@ -64,7 +64,7 @@ app.post("/preflight",(req,res)=>{
 // GET endpoint to connect
 app.get("/connect-data",(req,res) =>{
     if(connect){
-        return res.status(200).json(connect);
+        return res.status(200).send(connect);
     }else {
         return res.status(404).json({ error: 'No data available' });
     }
@@ -72,7 +72,7 @@ app.get("/connect-data",(req,res) =>{
 
 // POST endpoint to connect
 app.post("/connect",(req,res)=>{
-    connect = req.body;
+    connect = req.body.status;
     res.status(200).json({"message":"Data Recieved"});
 })
 
