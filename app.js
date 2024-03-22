@@ -10,7 +10,7 @@ app.use(cors());
 let tdata = null;
 let messages = null;
 let preflight = null;
-let connect = false;
+let connect = "disconnect";
 let waypoints = null;
 
 // POST endpoint for telemetry data
@@ -61,6 +61,12 @@ app.post("/preflight",(req,res)=>{
     res.status(200).json({"message":"Data Recieved"});
 })
 
+// POST endpoint to connect
+app.post("/connect",(req,res)=>{
+    connect = req.body.status;
+    res.status(200).json({"message":"Data Recieved"});
+})
+
 // GET endpoint to connect
 app.get("/connect-data",(req,res) =>{
     if(connect){
@@ -70,11 +76,6 @@ app.get("/connect-data",(req,res) =>{
     }
 })
 
-// POST endpoint to connect
-app.post("/connect",(req,res)=>{
-    connect = req.body.status;
-    res.status(200).json({"message":"Data Recieved"});
-})
 
 // POST Request for waypoints
 app.post("/waypoints",(req,res)=>{
