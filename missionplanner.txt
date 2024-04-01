@@ -105,3 +105,510 @@ static async Task Messages_api(string messages)
         }
     }
 }
+
+
+ //  Call Long_Polling() in Init() of FlightPlanner.cs
+
+public async Task Long_Polling()
+{
+    while (true)
+    {
+        await MakeLongPollingRequest();
+        // Wait for a while before making the next request
+        await Task.Delay(5000); // Adjust the delay time as needed
+    }
+}
+
+private string previousData = null; // Keep track of the previous data
+
+public async Task MakeLongPollingRequest()
+{
+    try
+    {
+        string apiUrl = "http://localhost:4000/waypoints-data";
+        using (var client = new HttpClient())
+        {
+            HttpResponseMessage response = await client.GetAsync(apiUrl);
+
+            if (response.IsSuccessStatusCode)
+            {
+                string responseData = await response.Content.ReadAsStringAsync();
+                List<Locationwp> presentData = JsonConvert.DeserializeObject<List<Locationwp>>(responseData);
+
+                // Check if previousData is not null and if it's equal to presentData
+                if (previousData == null || !string.Equals(previousData, responseData))
+                {
+                    write_Click(presentData);
+                }
+
+                previousData = responseData; // Update previousData with presentData
+            }
+            else
+            {
+                Console.WriteLine("Error: " + response.StatusCode);
+            }
+        }
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine("Exception occurred: " + ex.Message);
+    }
+}
+
+
+public void write_Click(List<Locationwp> commandlist)
+{
+    if ((altmode)CMB_altmode.SelectedValue == altmode.Absolute)
+    {
+        if ((int)DialogResult.No ==
+            CustomMessageBox.Show("Absolute Alt is selected are you sure?", "Alt Mode",
+                MessageBoxButtons.YesNo))
+        {
+            CMB_altmode.SelectedValue = (int)altmode.Relative;
+        }
+    }
+
+
+    // check home
+    Locationwp home = new Locationwp();
+    try
+    {
+        home.frame = (byte)MAVLink.MAV_FRAME.GLOBAL;
+        home.id = (ushort)MAVLink.MAV_CMD.WAYPOINT;
+        home.lat = (double.Parse(TXT_homelat.Text));
+        home.lng = (double.Parse(TXT_homelng.Text));
+        home.alt = (float.Parse(TXT_homealt.Text) / CurrentState.multiplierdist); // use saved home
+    }
+    catch
+    {
+        //CustomMessageBox.Show("Your home location is invalid", Strings.ERROR);
+        return;
+    }
+
+    // check for invalid grid data
+    for (int a = 0; a < Commands.Rows.Count - 0; a++)
+    {
+        for (int b = 0; b < Commands.ColumnCount - 0; b++)
+        {
+            double answer;
+            if (b >= 1 && b <= 7)
+            {
+                if (!double.TryParse(Commands[b, a].Value.ToString(), out answer))
+                {
+                    CustomMessageBox.Show("There are errors in your mission");
+                    return;
+                }
+            }
+
+            if (TXT_altwarn.Text == "") TXT_altwarn.Text = (0).ToString();
+
+            if (Commands.Rows[a].Cells[Command.Index].Value.ToString().Contains("UNKNOWN"))
+                continue;
+
+            ushort cmd = getCmdID(Commands.Rows[a].Cells[Command.Index].Value.ToString());
+
+            if (cmd < (ushort)MAVLink.MAV_CMD.LAST &&
+                double.Parse(Commands[Alt.Index, a].Value.ToString()) < double.Parse(TXT_altwarn.Text))
+            {
+                if (cmd != (ushort)MAVLink.MAV_CMD.TAKEOFF &&
+                    cmd != (ushort)MAVLink.MAV_CMD.LAND &&
+                    cmd != (ushort)MAVLink.MAV_CMD.RETURN_TO_LAUNCH)
+                {
+                    CustomMessageBox.Show("Low alt on WP#" + (a + 1) +
+                                          "\nPlease reduce the alt warning, or increase the altitude");
+                    return;
+                }
+            }
+        }
+    }
+
+    IProgressReporterDialogue frmProgressReporter = new ProgressReporterDialogue
+    {
+        StartPosition = FormStartPosition.CenterScreen,
+        Text = "Sending WP's"
+    };
+
+    //frmProgressReporter.DoWork += saveWPs;
+    saveWPs_normal(commandlist);
+
+    //frmProgressReporter.UpdateProgressAndStatus(-1, "Sending WP's");
+
+    ThemeManager.ApplyThemeTo(frmProgressReporter);
+
+    frmProgressReporter.RunBackgroundOperationAsync();
+
+    frmProgressReporter.Dispose();
+
+    MainMap.Focus();
+
+    //CustomMessageBox.Show("Arm button clicked");
+
+    FlightData.ARM_Click();
+
+    //CustomMessageBox.Show("Mission_start clicked");
+
+    FlightData ob = new FlightData();
+    ob.Actiondo_Click();
+}
+
+
+
+private void saveWPs_normal(List<Locationwp> commandlist)
+{
+    try
+    {
+        MAVLinkInterface port = MainV2.comPort;
+
+        if (!port.BaseStream.IsOpen)
+        {
+            throw new Exception("Please connect first!");
+        }
+
+        // define the home point
+        Locationwp home = new Locationwp();
+        try
+        {
+            home.frame = (byte)MAVLink.MAV_FRAME.GLOBAL;
+            home.id = (ushort)MAVLink.MAV_CMD.WAYPOINT;
+            home.lat = (double.Parse(TXT_homelat.Text));
+            home.lng = (double.Parse(TXT_homelng.Text));
+            home.alt = (float.Parse(TXT_homealt.Text) / CurrentState.multiplieralt); // use saved home
+        }
+        catch
+        {
+            throw new Exception("Your home location is invalid");
+        }
+
+        // log
+        log.Info("wps values " + MainV2.comPort.MAV.wps.Values.Count);
+        log.Info("cmd rows " + (Commands.Rows.Count + 1)); // + home
+
+        var type = (MAVLink.MAV_MISSION_TYPE)Invoke((Func<MAVLink.MAV_MISSION_TYPE>)delegate
+        {
+            return (MAVLink.MAV_MISSION_TYPE)cmb_missiontype.SelectedValue;
+        });
+
+        // get the command list from the datagrid
+        //var commandlist = GetCommandList();
+
+
+
+        if (type == MAVLink.MAV_MISSION_TYPE.MISSION &&
+            MainV2.comPort.MAV.apname == MAVLink.MAV_AUTOPILOT.ARDUPILOTMEGA)
+            commandlist.Insert(0, home);
+
+        // fence does not use alt, and needs to be global
+        if (type == MAVLink.MAV_MISSION_TYPE.FENCE)
+        {
+            commandlist = commandlist.Select((fp) =>
+            {
+                fp.frame = (byte)MAVLink.MAV_FRAME.GLOBAL;
+                return fp;
+            }).ToList();
+        }
+
+        if (chk_usemavftp.Checked)
+        {
+            try
+            {
+                var values = missionpck.pack(commandlist.Select(a => (MAVLink.mavlink_mission_item_int_t)a).ToList(), type, 0);
+                var ftp = new MAVFtp(MainV2.comPort, MainV2.comPort.MAV.sysid, MainV2.comPort.MAV.compid);
+                //ftp.Progress += (status, percent) => { sender.UpdateProgressAndStatus((int)(percent), status); };
+                if (type == MAVLink.MAV_MISSION_TYPE.MISSION)
+                    ftp.UploadFile("@MISSION/mission.dat", new MemoryStream(values), null);
+                if (type == MAVLink.MAV_MISSION_TYPE.FENCE)
+                    ftp.UploadFile("@MISSION/fence.dat", new MemoryStream(values), null);
+                if (type == MAVLink.MAV_MISSION_TYPE.RALLY)
+                    ftp.UploadFile("@MISSION/rally.dat", new MemoryStream(values), null);
+                return;
+            }
+            catch (Exception ex)
+            {
+                log.Error(ex);
+            }
+        }
+
+        Task.Run(async () =>
+        {
+            await mav_mission.upload(MainV2.comPort, MainV2.comPort.MAV.sysid, MainV2.comPort.MAV.compid, type,
+                commandlist).ConfigureAwait(false);
+
+            try
+            {
+                await MainV2.comPort.getHomePositionAsync((byte)MainV2.comPort.sysidcurrent,
+                    (byte)MainV2.comPort.compidcurrent).ConfigureAwait(false);
+            }
+            catch (Exception ex2)
+            {
+                log.Error(ex2);
+                try
+                {
+                    MainV2.comPort.getWP((byte)MainV2.comPort.sysidcurrent,
+                        (byte)MainV2.comPort.compidcurrent, 0);
+                }
+                catch (Exception ex3)
+                {
+                    log.Error(ex3);
+                }
+            }
+        }).GetAwaiter().GetResult();
+
+        //((ProgressReporterDialogue)sender).UpdateProgressAndStatus(95, "Setting params");
+
+        // m
+        port.setParam("WP_RADIUS", float.Parse(TXT_WPRad.Text) / CurrentState.multiplierdist);
+
+        // cm's
+        port.setParam("WPNAV_RADIUS", float.Parse(TXT_WPRad.Text) / CurrentState.multiplierdist * 100.0);
+
+        try
+        {
+            port.setParam(new[] { "LOITER_RAD", "WP_LOITER_RAD" },
+                float.Parse(TXT_loiterrad.Text) / CurrentState.multiplierdist);
+        }
+        catch
+        {
+        }
+
+        commandlist?.ForEach(pnt =>
+        {
+            try
+            {
+                if (pnt.lat != 0 && pnt.lng != 0)
+                    port.Terrain.checkTerrain(pnt.lat, pnt.lng);
+            }
+            catch
+            {
+            }
+        });
+
+
+
+        //((ProgressReporterDialogue)sender).UpdateProgressAndStatus(100, "Done.");
+    }
+    catch (Exception ex)
+    {
+        log.Error(ex);
+        throw;
+    }
+
+    MainV2.comPort.giveComport = false;
+
+
+
+}
+
+//paste ARM Button in FlighData.cs
+
+public static void ARM_Click()
+{
+    if (!MainV2.comPort.BaseStream.IsOpen)
+        return;
+
+    // arm the MAV
+    try
+    {
+        var isitarmed = MainV2.comPort.MAV.cs.armed;
+        
+        var action = MainV2.comPort.MAV.cs.armed ? "Disarm" : "Arm";
+
+        if (isitarmed)
+            if (CustomMessageBox.Show("Are you sure you want to " + action, action,
+                    CustomMessageBox.MessageBoxButtons.YesNo) !=
+                CustomMessageBox.DialogResult.Yes)
+                return;
+        StringBuilder sb = new StringBuilder();
+        var sub = MainV2.comPort.SubscribeToPacketType(MAVLink.MAVLINK_MSG_ID.STATUSTEXT, message =>
+        {
+            sb.AppendLine(Encoding.ASCII.GetString(((MAVLink.mavlink_statustext_t) message.data).text)
+                .TrimEnd('\0'));
+            return true;
+        }, (byte)MainV2.comPort.sysidcurrent, (byte)MainV2.comPort.compidcurrent);
+        bool ans = MainV2.comPort.doARM(!isitarmed);
+        MainV2.comPort.UnSubscribeToPacketType(sub);
+        if (ans == false)
+        {
+            if (CustomMessageBox.Show(
+                    action + " failed.\n" + sb.ToString() + "\nForce " + action +
+                    " can bypass safety checks,\nwhich can lead to the vehicle crashing\nand causing serious injuries.\n\nDo you wish to Force " +
+                    action + "?", Strings.ERROR, CustomMessageBox.MessageBoxButtons.YesNo,
+                    CustomMessageBox.MessageBoxIcon.Exclamation, "Force " + action, "Cancel") ==
+                CustomMessageBox.DialogResult.Yes)
+            {
+                ans = MainV2.comPort.doARM(!isitarmed, true);
+                if (ans == false)
+                {
+                    CustomMessageBox.Show(Strings.ErrorRejectedByMAV, Strings.ERROR);
+                }
+            }
+        }
+        
+
+
+    }
+    catch
+    {
+        CustomMessageBox.Show(Strings.ErrorNoResponce, Strings.ERROR);
+    }
+}
+
+// Paste Actiondo_Click() in FlightData.cs
+
+public void Actiondo_Click()
+{
+    try
+    {
+        if (CMB_action.Text == actions.Trigger_Camera.ToString())
+        {
+            MainV2.comPort.setDigicamControl(true);
+            return;
+        }
+    }
+    catch
+    {
+        CustomMessageBox.Show(Strings.CommandFailed, Strings.ERROR);
+        return;
+    }
+
+
+    if (CMB_action.Text == actions.Scripting_cmd_stop_and_restart.ToString())
+    {
+        try
+        {
+            MainV2.comPort.doCommandInt(MainV2.comPort.MAV.sysid, MainV2.comPort.MAV.compid, MAVLink.MAV_CMD.SCRIPTING, (int)MAVLink.SCRIPTING_CMD.STOP_AND_RESTART, 0, 0, 0, 0, 0, 0);
+            return;
+        }
+        catch
+        {
+            CustomMessageBox.Show(Strings.CommandFailed, Strings.ERROR);
+            return;
+        }
+    }
+
+    if (CMB_action.Text == actions.Scripting_cmd_stop.ToString())
+    {
+        try
+        {
+            MainV2.comPort.doCommandInt(MainV2.comPort.MAV.sysid, MainV2.comPort.MAV.compid, MAVLink.MAV_CMD.SCRIPTING, (int)MAVLink.SCRIPTING_CMD.STOP, 0, 0, 0, 0, 0, 0);
+            return;
+        }
+        catch
+        {
+            CustomMessageBox.Show(Strings.CommandFailed, Strings.ERROR);
+            return;
+        }
+    }
+
+    if (CMB_action.Text == actions.System_Time.ToString())
+    {
+        var now = DateTime.UtcNow;
+        var epoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        ulong time_unix_us = Convert.ToUInt64((now - epoch).TotalMilliseconds * 1000);
+        try
+        {
+            MainV2.comPort.sendPacket(
+                new MAVLink.mavlink_system_time_t() { time_unix_usec = time_unix_us, time_boot_ms = 0 },
+                MainV2.comPort.sysidcurrent, MainV2.comPort.compidcurrent);
+        }
+        catch
+        {
+            CustomMessageBox.Show(Strings.CommandFailed, Strings.ERROR);
+        }
+
+        return;
+    }
+
+    if (
+        CustomMessageBox.Show("Are you sure you want to do " + CMB_action.Text + " ?", "Action",
+            MessageBoxButtons.YesNo) == (int)DialogResult.Yes)
+    {
+        try
+        {
+            //((Control)sender).Enabled = false;
+
+            int param1 = 0;
+            int param2 = 0;
+            int param3 = 1;
+
+            // request gyro
+            if (CMB_action.Text == actions.Preflight_Calibration.ToString())
+            {
+                if (MainV2.comPort.MAV.cs.firmware == Firmwares.ArduCopter2)
+                    param1 = 1; // gyro
+                param3 = 1; // baro / airspeed
+            }
+
+            if (CMB_action.Text == actions.Preflight_Reboot_Shutdown.ToString())
+            {
+                MainV2.comPort.doReboot();
+                //((Control)sender).Enabled = true;
+                return;
+            }
+            if (CMB_action.Text == actions.HighLatency_Enable.ToString())
+            {
+                MainV2.comPort.doHighLatency(true);
+                //((Control)sender).Enabled = true;
+                return;
+            }
+            if (CMB_action.Text == actions.HighLatency_Disable.ToString())
+            {
+                MainV2.comPort.doHighLatency(false);
+                //((Control)sender).Enabled = true;
+                return;
+            }
+            if (CMB_action.Text == actions.Toggle_Safety_Switch.ToString())
+            {
+                var target_system = (byte)MainV2.comPort.sysidcurrent;
+                if (target_system == 0)
+                {
+                    log.Info("Not toggling safety on sysid 0");
+                    return;
+                }
+                var custom_mode = (MainV2.comPort.MAV.cs.sensors_enabled.motor_control && MainV2.comPort.MAV.cs.sensors_enabled.seen) ? 1u : 0u;
+                var mode = new MAVLink.mavlink_set_mode_t() { custom_mode = custom_mode, target_system = target_system };
+                MainV2.comPort.setMode(mode, MAVLink.MAV_MODE_FLAG.SAFETY_ARMED);
+                //((Control)sender).Enabled = true;
+                return;
+            }
+
+            if (CMB_action.Text == actions.Battery_Reset.ToString())
+            {
+                param1 = 0xff; // batt 1
+                param2 = 100; // 100%
+                param3 = 0;
+            }
+
+            if (CMB_action.Text == actions.Mission_Start.ToString())
+            {
+                MAVLink.MAV_CMD cmd;
+                try
+                {
+                    cmd = (MAVLink.MAV_CMD)Enum.Parse(typeof(MAVLink.MAV_CMD), CMB_action.Text.ToUpper());
+                }
+                catch (ArgumentException ex)
+                {
+                    cmd = (MAVLink.MAV_CMD)Enum.Parse(typeof(MAVLink.MAV_CMD),
+                        "DO_START_" + CMB_action.Text.ToUpper());
+                }
+
+                if (MainV2.comPort.doCommand(cmd, param1, param2, param3, 0, 0, 0, 0))
+                {
+
+                }
+                else
+                {
+                    CustomMessageBox.Show(Strings.CommandFailed + " " + cmd, Strings.ERROR);
+                }
+            }
+
+            
+            
+        }
+        catch
+        {
+            CustomMessageBox.Show(Strings.CommandFailed, Strings.ERROR);
+        }
+
+        //((Control)sender).Enabled = true;
+    }
+}
