@@ -398,7 +398,7 @@ private void saveWPs_normal(List<Locationwp> commandlist)
 
 }
 
-//paste ARM Button in FlighData.cs
+//paste ARM_Click Button in FlighData.cs
 
 public static void ARM_Click()
 {

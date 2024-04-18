@@ -12,6 +12,7 @@ let messages = null;
 let preflight = null;
 let connect = "disconnect";
 let waypoints = null;
+let mode = 'Auto';
 
 // POST endpoint for telemetry data
 app.post("/tdata", (req, res) => {
@@ -69,11 +70,11 @@ app.post("/connect",(req,res)=>{
 
 // GET endpoint to connect
 app.get("/connect-data",(req,res) =>{
-    if(connect){
+    // if(connect){
         return res.status(200).send(connect);
-    }else {
-        return res.status(404).json({ error: 'No data available' });
-    }
+    // }else {
+    //     return res.status(404).json({ error: 'No data available' });
+    // }
 })
 
 
@@ -90,6 +91,15 @@ app.get("/waypoints-data",(req,res)=>{
     }else {
         res.status(404).json({ error: 'No data available' });
     }
+})
+
+app.post("/modes",(req,res)=>{
+    mode = req.body.mode;
+    res.status(200).json({"message":"Mode recieved"})
+})
+
+app.get("/modes-data",(req,res)=>{
+    res.status(200).send(mode);
 })
 
 // Start the server
