@@ -94,7 +94,7 @@ app.get("/waypoints-data",(req,res)=>{
 })
 
 app.post("/modes",(req,res)=>{
-    mode = req.body.mode;
+    mode = req.body.modes;
     res.status(200).json({"message":"Mode recieved"})
 })
 
